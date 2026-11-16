@@ -1,0 +1,31 @@
+:root { font-family: system-ui, "Segoe UI", sans-serif; color: #1f2937; background: #f3f4f6; }
+body { margin: 0; }
+header { display: flex; justify-content: space-between; align-items: center; padding: 12px 24px; background: #1e3a5f; color: #fff; }
+.layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px 24px; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+.card { background: #fff; border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.narrow { max-width: 360px; margin: 10vh auto; }
+h1, h2, h3 { margin: 0 0 8px; }
+h3 { font-size: 1rem; margin-top: 16px; }
+label { display: block; margin-bottom: 10px; font-size: .9rem; }
+input, textarea, select { display: block; width: 100%; box-sizing: border-box; padding: 7px 9px; margin-top: 3px; border: 1px solid #cbd5e1; border-radius: 6px; font: inherit; }
+.row { display: flex; gap: 8px; align-items: center; margin: 10px 0; }
+.row input { margin: 0; }
+.row select { margin: 0; width: auto; flex: 0 0 auto; }
+.between { justify-content: space-between; }
+.between select { width: auto; }
+button { background: #1e3a5f; color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; cursor: pointer; font: inherit; }
+button:hover { background: #274b7a; }
+button.link { background: none; color: #2563eb; padding: 0; text-decoration: underline; }
+header button.link { color: #cfe0ff; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid #e5e7eb; font-size: .92rem; }
+tbody tr { cursor: pointer; }
+tbody tr:hover, tr.active { background: #eef4ff; }
+.muted { color: #6b7280; font-size: .88rem; }
+.error { color: #b91c1c; }
+.badge { padding: 2px 8px; border-radius: 10px; font-size: .78rem; background: #e5e7eb; }
+.badge.open { background: #fee2e2; color: #991b1b; }
+.badge.in_progress { background: #fef3c7; color: #92400e; }
+.badge.resolved { background: #d1fae5; color: #065f46; }
+.comment { border-left: 3px solid #cbd5e1; padding-left: 10px; margin: 8px 0; }

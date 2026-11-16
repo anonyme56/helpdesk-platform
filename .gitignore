@@ -1,0 +1,32 @@
+# secrets et config locale
+.env
+*.tfvars
+*.tfstate
+*.tfstate.*
+.terraform/
+crash.log
+kubeconfig*
+*.pem
+*.key
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+
+# node
+node_modules/
+frontend/dist/
+
+# divers
+.DS_Store
+captures-brutes/
+
+# kubeconfig genere par le provider kind (contient une cle client)
+terraform/local/*-config
+.generated-*
+.generated/

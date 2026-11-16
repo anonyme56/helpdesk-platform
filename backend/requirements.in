@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg[binary]
+pydantic[email]
+pydantic-settings
+argon2-cffi
+pyjwt
+boto3
+redis
+rq
+prometheus-client
+python-multipart
+cryptography
