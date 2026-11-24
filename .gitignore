@@ -30,3 +30,7 @@ captures-brutes/
 terraform/local/*-config
 .generated-*
 .generated/
+
+# guides perso (non versionnes)
+CLUSTER.md
+DOCKER.md

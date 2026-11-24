@@ -1,0 +1,55 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: helpdesk-test
+resources:
+  - ../../base
+  - offhours.yaml
+patches:
+  - path: resources-patch.yaml
+  - target: { kind: Ingress, name: helpdesk }
+    patch: |-
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: helpdesk-test.localtest.me
+      - op: replace
+        path: /spec/rules/0/host
+        value: helpdesk-test.localtest.me
+  - target: { kind: ConfigMap, name: helpdesk-config }
+    patch: |-
+      - op: replace
+        path: /data/ENV
+        value: test
+  - target: { kind: Deployment, name: backend }
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target: { kind: Deployment, name: frontend }
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target: { kind: HorizontalPodAutoscaler, name: backend }
+    patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 1
+      - op: replace
+        path: /spec/maxReplicas
+        value: 3
+  - patch: |-
+      $patch: delete
+      apiVersion: policy/v1
+      kind: PodDisruptionBudget
+      metadata: { name: backend }
+  - patch: |-
+      $patch: delete
+      apiVersion: policy/v1
+      kind: PodDisruptionBudget
+      metadata: { name: frontend }
+# tags d'images : jamais "latest" ; scripts/deploy.sh et la CI remplacent newTag par la version deployee
+images:
+  - { name: helpdesk/backend, newName: localhost:5001/helpdesk/backend, newTag: dev }
+  - { name: helpdesk/worker, newName: localhost:5001/helpdesk/worker, newTag: dev }
+  - { name: helpdesk/frontend, newName: localhost:5001/helpdesk/frontend, newTag: dev }
+  - { name: helpdesk/backup, newName: localhost:5001/helpdesk/backup, newTag: dev }

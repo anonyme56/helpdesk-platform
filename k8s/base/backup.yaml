@@ -1,0 +1,49 @@
+# Sauvegarde nocturne de la base vers le stockage objet (A.8.13). Chiffrée avant l'envoi.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-backup
+  labels: { app.kubernetes.io/name: backup, app.kubernetes.io/part-of: helpdesk }
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 600
+      template:
+        metadata:
+          labels: { app.kubernetes.io/name: backup, app.kubernetes.io/part-of: helpdesk, helpdesk/tier: batch }
+        spec:
+          restartPolicy: Never
+          serviceAccountName: backup
+          enableServiceLinks: false   # sinon K8s injecte des variables du type S3_PORT=tcp://... qui polluent les applis
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 70
+            runAsGroup: 70
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: backup
+              image: helpdesk/backup
+              envFrom: [{ configMapRef: { name: helpdesk-config } }]
+              env:
+                - { name: DB_PASSWORD, valueFrom: { secretKeyRef: { name: helpdesk-secrets, key: db-password } } }
+                - { name: S3_ACCESS_KEY, valueFrom: { secretKeyRef: { name: helpdesk-secrets, key: s3-access-key } } }
+                - { name: S3_SECRET_KEY, valueFrom: { secretKeyRef: { name: helpdesk-secrets, key: s3-secret-key } } }
+                - { name: BACKUP_PASSPHRASE, valueFrom: { secretKeyRef: { name: helpdesk-secrets, key: backup-passphrase } } }
+                - { name: BACKUP_KEEP, value: "7" }
+              resources:
+                requests: { cpu: 20m, memory: 32Mi }
+                limits: { memory: 128Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+          volumes:
+            - { name: tmp, emptyDir: {} }

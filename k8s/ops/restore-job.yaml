@@ -1,0 +1,35 @@
+# Test de restauration : recharge la derniere sauvegarde dans une base SEPAREE (helpdesk_restore),
+# sans toucher a la base de production. A lancer regulierement (une sauvegarde non testee n'est pas une sauvegarde).
+#   sed 's/NAMESPACE/helpdesk-prod/;s/TAG/v1.0.2/' k8s/ops/restore-job.yaml | kubectl apply -f -
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-restore-test
+  namespace: NAMESPACE
+  labels: { app.kubernetes.io/name: backup, app.kubernetes.io/part-of: helpdesk }
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: backup, app.kubernetes.io/part-of: helpdesk, helpdesk/tier: batch }
+    spec:
+      restartPolicy: Never
+      serviceAccountName: backup
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+      securityContext: { runAsNonRoot: true, runAsUser: 70, runAsGroup: 70, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: restore
+          image: localhost:5001/helpdesk/backup:TAG
+          command: ["/usr/local/bin/restore.sh"]
+          envFrom: [{ configMapRef: { name: helpdesk-config } }]
+          env:
+            - { name: DB_PASSWORD, valueFrom: { secretKeyRef: { name: helpdesk-secrets, key: db-password } } }
+            - { name: S3_ACCESS_KEY, valueFrom: { secretKeyRef: { name: helpdesk-secrets, key: s3-access-key } } }
+            - { name: S3_SECRET_KEY, valueFrom: { secretKeyRef: { name: helpdesk-secrets, key: s3-secret-key } } }
+            - { name: BACKUP_PASSPHRASE, valueFrom: { secretKeyRef: { name: helpdesk-secrets, key: backup-passphrase } } }
+          resources: { requests: { cpu: 20m, memory: 32Mi }, limits: { memory: 128Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: ["ALL"] } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]

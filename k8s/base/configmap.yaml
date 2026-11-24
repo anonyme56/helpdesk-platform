@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: helpdesk-config
+data:
+  ENV: "dev"
+  LOG_LEVEL: "INFO"
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: helpdesk
+  DB_USER: helpdesk
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  S3_ENDPOINT: http://s3:8333
+  S3_BUCKET_ATTACHMENTS: attachments
+  S3_BUCKET_EXPORTS: exports
+  S3_BUCKET_BACKUPS: backups
+  SMTP_HOST: mailpit
+  SMTP_PORT: "1025"
+  MAX_UPLOAD_MB: "5"

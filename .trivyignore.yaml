@@ -1,0 +1,13 @@
+# Exceptions explicites (une ligne de justification chacune, revue a chaque changement de perimetre).
+misconfigurations:
+  - id: KSV-0056
+    paths: ["k8s/base/rbac.yaml"]
+    statement: "ci-deployer doit creer services/ingress/networkpolicies pour deployer ; droits limites a son namespace, sans acces aux Secrets."
+  - id: AWS-0104
+    statement: "Sortie ouverte des noeuds EKS necessaire (ECR, API AWS, mises a jour) ; le filtrage est fait par NetworkPolicy dans le cluster."
+  - id: KSV-0014
+    paths: ["k8s/overlays/*/resources-patch.yaml"]
+    statement: "Patch Kustomize partiel (requests/limits seulement) fusionne dans les manifestes de base, qui ont readOnlyRootFilesystem."
+  - id: KSV-0118
+    paths: ["k8s/overlays/*/resources-patch.yaml"]
+    statement: "Patch Kustomize partiel : le securityContext est defini dans les manifestes de base (non-root, seccomp, capabilities retirees)."

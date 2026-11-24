@@ -1,0 +1,96 @@
+# FinOps : l'environnement n'est utile qu'aux heures de bureau. On l'éteint le soir et le week-end (les données
+# restent sur les PersistentVolumes) puis on le rallume le matin des jours ouvrés.
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: scaler }
+automountServiceAccountToken: true
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: scaler }
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale", "statefulsets/scale"]
+    verbs: ["get", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: scaler }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: scaler }
+subjects: [{ kind: ServiceAccount, name: scaler }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: offhours-egress }
+spec:
+  podSelector: { matchLabels: { app.kubernetes.io/name: offhours } }
+  policyTypes: [Egress]
+  egress:
+    - to: [{ ipBlock: { cidr: 10.96.0.1/32 } }]      # Service "kubernetes" (API server)
+      ports: [{ protocol: TCP, port: 443 }]
+    - to: [{ ipBlock: { cidr: 172.16.0.0/12 } }]     # adresse du noeud apres DNAT
+      ports: [{ protocol: TCP, port: 6443 }]
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: { name: scale-down-evening }
+spec:
+  schedule: "0 20 * * *"
+  timeZone: Europe/Paris
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata: { labels: { app.kubernetes.io/name: offhours } }
+        spec:
+          restartPolicy: Never
+          serviceAccountName: scaler
+          enableServiceLinks: false
+          securityContext: { runAsNonRoot: true, runAsUser: 65532, seccompProfile: { type: RuntimeDefault } }
+          # l'image kubectl est "distroless" (pas de shell) : une etape par commande
+          initContainers:
+            - name: scale-deployments
+              image: registry.k8s.io/kubectl:v1.35.8
+              command: ["kubectl", "scale", "deployment", "--all", "--replicas=0"]
+              resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 128Mi } }
+              securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: ["ALL"] } }
+          containers:
+            - name: scale-statefulsets
+              image: registry.k8s.io/kubectl:v1.35.8
+              command: ["kubectl", "scale", "statefulset", "--all", "--replicas=0"]
+              resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 128Mi } }
+              securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: ["ALL"] } }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata: { name: scale-up-morning }
+spec:
+  schedule: "30 7 * * 1-5"
+  timeZone: Europe/Paris
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata: { labels: { app.kubernetes.io/name: offhours } }
+        spec:
+          restartPolicy: Never
+          serviceAccountName: scaler
+          enableServiceLinks: false
+          securityContext: { runAsNonRoot: true, runAsUser: 65532, seccompProfile: { type: RuntimeDefault } }
+          initContainers:
+            - name: scale-statefulsets
+              image: registry.k8s.io/kubectl:v1.35.8
+              command: ["kubectl", "scale", "statefulset", "--all", "--replicas=1"]
+              resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 128Mi } }
+              securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: ["ALL"] } }
+          containers:
+            - name: scale-deployments
+              image: registry.k8s.io/kubectl:v1.35.8
+              command: ["kubectl", "scale", "deployment", "mailpit", "worker", "frontend", "backend", "--replicas=1"]
+              resources: { requests: { cpu: 10m, memory: 32Mi }, limits: { memory: 128Mi } }
+              securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: ["ALL"] } }

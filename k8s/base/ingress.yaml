@@ -1,0 +1,21 @@
+# Point d'entrée unique en HTTPS : /api -> back-end, le reste -> front-end.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: helpdesk
+  labels: { app.kubernetes.io/part-of: helpdesk }
+spec:
+  ingressClassName: traefik
+  tls:
+    - secretName: helpdesk-tls
+      hosts: [HOST_PLACEHOLDER]
+  rules:
+    - host: HOST_PLACEHOLDER
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend: { service: { name: backend, port: { name: http } } }
+          - path: /
+            pathType: Prefix
+            backend: { service: { name: frontend, port: { name: http } } }

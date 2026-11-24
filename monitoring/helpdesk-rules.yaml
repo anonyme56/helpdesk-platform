@@ -1,0 +1,86 @@
+# Règles d'alerte et enregistrements SLI : déployées UNE fois pour tous les environnements (namespace monitoring).
+# Les expressions agrègent par namespace, donc chaque environnement garde ses propres séries et alertes.
+# SLI / SLO et alertes.
+#   SLI disponibilité : part des requêtes API qui ne finissent pas en 5xx
+#   SLI latence       : part des requêtes API servies en moins de 250 ms
+#   SLO               : 99,5 % de disponibilité, 95 % des requêtes < 250 ms (fenêtre 30 jours)
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: helpdesk-slo
+  namespace: monitoring
+  labels: { app.kubernetes.io/part-of: helpdesk }
+spec:
+  groups:
+    - name: helpdesk.sli
+      interval: 30s
+      rules:
+        - record: helpdesk:http_requests:rate5m
+          expr: sum by (namespace) (rate(http_requests_total{route=~"/api.*"}[5m]))
+        # "or ... * 0" : sans aucune erreur 5xx la serie n'existe pas, on la force a 0 pour que le SLI reste calculable
+        - record: helpdesk:http_errors:rate5m
+          expr: |
+            sum by (namespace) (rate(http_requests_total{route=~"/api.*",status=~"5.."}[5m]))
+            or (sum by (namespace) (rate(http_requests_total{route=~"/api.*"}[5m])) * 0)
+        - record: helpdesk:availability:ratio_rate5m
+          expr: 1 - (helpdesk:http_errors:rate5m / helpdesk:http_requests:rate5m)
+        - record: helpdesk:availability:ratio_rate1h
+          expr: |
+            1 - ((sum by (namespace) (rate(http_requests_total{route=~"/api.*",status=~"5.."}[1h]))
+                  or (sum by (namespace) (rate(http_requests_total{route=~"/api.*"}[1h])) * 0))
+                 / sum by (namespace) (rate(http_requests_total{route=~"/api.*"}[1h])))
+        - record: helpdesk:availability:ratio_rate30d
+          expr: |
+            1 - ((sum by (namespace) (rate(http_requests_total{route=~"/api.*",status=~"5.."}[30d]))
+                  or (sum by (namespace) (rate(http_requests_total{route=~"/api.*"}[30d])) * 0))
+                 / sum by (namespace) (rate(http_requests_total{route=~"/api.*"}[30d])))
+        - record: helpdesk:latency_under_250ms:ratio_rate5m
+          expr: |
+            sum by (namespace) (rate(http_request_duration_seconds_bucket{route=~"/api.*",le="0.25"}[5m]))
+            / sum by (namespace) (rate(http_request_duration_seconds_count{route=~"/api.*"}[5m]))
+        - record: helpdesk:latency_p95_seconds:5m
+          expr: |
+            histogram_quantile(0.95, sum by (namespace, le) (rate(http_request_duration_seconds_bucket{route=~"/api.*"}[5m])))
+    - name: helpdesk.alerts
+      rules:
+        - alert: HelpdeskAPIHighErrorRate
+          expr: helpdesk:availability:ratio_rate5m < 0.95 and helpdesk:http_requests:rate5m > 0.05
+          for: 2m
+          labels: { severity: critical }
+          annotations:
+            summary: "Taux d'erreurs 5xx élevé sur l'API ({{ $labels.namespace }})"
+            description: "Disponibilité mesurée {{ $value | humanizePercentage }} sur 5 min (objectif 99,5 %)."
+        - alert: HelpdeskAPIHighLatency
+          expr: helpdesk:latency_p95_seconds:5m > 0.5
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: "Latence p95 de l'API supérieure à 500 ms ({{ $labels.namespace }})"
+            description: "p95 = {{ $value | humanizeDuration }}."
+        - alert: HelpdeskBackendDown
+          expr: kube_deployment_status_replicas_available{deployment="backend",namespace=~"helpdesk-.*"} < 1
+          for: 1m
+          labels: { severity: critical }
+          annotations:
+            summary: "Plus aucun pod backend disponible ({{ $labels.namespace }})"
+        - alert: HelpdeskQueueBacklog
+          expr: worker_queue_length{namespace=~"helpdesk-.*"} > 50
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: "File de tâches saturée : {{ $value }} tâches en attente ({{ $labels.namespace }})"
+        - alert: HelpdeskWorkerJobsFailing
+          expr: increase(worker_jobs_total{result="failed"}[10m]) > 3
+          labels: { severity: warning }
+          annotations:
+            summary: "Des tâches du worker échouent ({{ $labels.namespace }})"
+        - alert: HelpdeskLoginBruteForce
+          expr: increase(helpdesk_login_failures_total[5m]) > 20
+          labels: { severity: warning }
+          annotations:
+            summary: "Nombre anormal d'échecs de connexion ({{ $labels.namespace }}) : possible attaque par force brute"
+        - alert: HelpdeskBackupMissing
+          expr: time() - kube_cronjob_status_last_successful_time{cronjob="db-backup",namespace=~"helpdesk-.*"} > 26 * 3600
+          labels: { severity: critical }
+          annotations:
+            summary: "Aucune sauvegarde réussie depuis plus de 26 h ({{ $labels.namespace }})"

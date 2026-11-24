@@ -5,7 +5,6 @@ from functools import lru_cache
 import boto3
 import redis
 from botocore.client import Config
-from botocore.exceptions import ClientError
 from rq import Queue, Retry
 
 from .config import get_settings
@@ -34,13 +33,6 @@ class S3Storage:
     def get(self, bucket: str, key: str) -> tuple[bytes, str]:
         obj = self.client.get_object(Bucket=bucket, Key=key)
         return self.cipher.decrypt(obj["Body"].read()), obj.get("ContentType", "application/octet-stream")
-
-    def ping(self) -> bool:
-        try:
-            self.client.list_buckets()
-            return True
-        except ClientError:
-            return False
 
 
 @lru_cache

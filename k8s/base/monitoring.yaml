@@ -1,0 +1,23 @@
+# Collecte des métriques de l'API et du worker.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: backend
+  labels: { app.kubernetes.io/part-of: helpdesk }
+spec:
+  selector:
+    matchLabels: { app.kubernetes.io/name: backend }
+  endpoints:
+    - { port: http, path: /metrics, interval: 15s }
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: worker
+  labels: { app.kubernetes.io/part-of: helpdesk }
+spec:
+  selector:
+    matchLabels: { app.kubernetes.io/name: worker }
+  podMetricsEndpoints:
+    - { port: metrics, path: /metrics, interval: 15s }
+---

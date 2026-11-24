@@ -1,0 +1,3 @@
+# Faux positifs historiques : valeurs de test (non secretes) presentes dans les 1ers commits, supprimees ensuite du code.
+1d37a29534283ebc08a82fa9d3f81a28714e724a:backend/tests/conftest.py:generic-api-key:3
+1d37a29534283ebc08a82fa9d3f81a28714e724a:worker/tests/test_tasks.py:generic-api-key:6

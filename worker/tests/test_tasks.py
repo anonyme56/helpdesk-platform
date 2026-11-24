@@ -3,10 +3,10 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-os.environ.setdefault("FILE_ENCRYPTION_KEY", "8jh0Jq5s0m2yS1m9XJ5YzXn2m1k3o4pQ7rT9uV1wX3Y=")
-
 import pytest  # noqa: E402
 from cryptography.fernet import Fernet  # noqa: E402
+
+os.environ.setdefault("FILE_ENCRYPTION_KEY", Fernet.generate_key().decode())
 
 import tasks  # noqa: E402
 

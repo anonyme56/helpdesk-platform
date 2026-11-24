@@ -1,6 +1,8 @@
 import os
+import secrets
 
-os.environ.setdefault("JWT_SECRET", "secret-de-test-uniquement-assez-long-32o")
+# valeur aleatoire a chaque session de test : rien de "secret" n'est ecrit dans le depot
+os.environ.setdefault("JWT_SECRET", secrets.token_hex(32))
 os.environ.setdefault("ADMIN_PASSWORD", "")
 
 import fakeredis  # noqa: E402
