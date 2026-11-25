@@ -10,7 +10,8 @@ RUN npm run build
 # image finale : nginx sans privilege (port 8080), uniquement les fichiers statiques
 FROM nginxinc/nginx-unprivileged:1.30-alpine-slim
 USER root
-RUN apk upgrade --no-cache   # correctifs musl/zlib publies apres l'image de base
+# l'image de base fige nginx 1.30.6 (CVE corrigees en 1.30.7) : on force la version corrigee, puis musl/zlib
+RUN apk add --no-cache "nginx>=1.30.7-r0" && apk upgrade --no-cache
 USER 101
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
