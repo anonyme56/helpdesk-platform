@@ -11,9 +11,9 @@ RUN /opt/venv/bin/pip install -r requirements.txt \
 FROM python:3.12-slim
 ARG APP_VERSION=dev
 ENV PATH="/opt/venv/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 APP_VERSION=${APP_VERSION}
-# correctif de securite zlib publie apres la construction de l'image de base (CVE signalees par Trivy)
+# correctifs de securite zlib/zstd publies apres la construction de l'image de base (CVE signalees par Trivy)
 # hadolint ignore=DL3008
-RUN apt-get update && apt-get install -y --no-install-recommends --only-upgrade zlib1g \
+RUN apt-get update && apt-get install -y --no-install-recommends --only-upgrade zlib1g libzstd1 \
  && rm -rf /var/lib/apt/lists/*
 RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app --no-create-home app
 COPY --from=builder /opt/venv /opt/venv
